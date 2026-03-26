@@ -56,17 +56,19 @@ const createRoom = async (req, res) => {
             return res.status(403).json({ error: 'You can only add rooms to your own hostels.' });
         }
 
-        const { room_type, price_per_month, capacity, is_available } = req.body;
+        const { room_number, room_type, price_per_semester, capacity, description, is_available } = req.body;
 
-        if (!price_per_month) {
-            return res.status(400).json({ error: 'price_per_month is required.' });
+        if (!price_per_semester) {
+            return res.status(400).json({ error: 'price_per_semester is required.' });
         }
 
         const [result] = await Room.create({
             hostel_id: hostelId,
+            room_number,
             room_type,
-            price_per_month,
+            price_per_semester,
             capacity,
+            description,
             is_available,
         });
 
@@ -92,8 +94,8 @@ const updateRoom = async (req, res) => {
             return res.status(403).json({ error: 'You can only update rooms in your own hostels.' });
         }
 
-        const { room_type, price_per_month, capacity, is_available } = req.body;
-        await Room.update(req.params.id, { room_type, price_per_month, capacity, is_available });
+        const { room_number, room_type, price_per_semester, capacity, description, is_available } = req.body;
+        await Room.update(req.params.id, { room_number, room_type, price_per_semester, capacity, description, is_available });
         res.json({ message: 'Room updated successfully.' });
     } catch (err) {
         res.status(500).json({ error: err.message });

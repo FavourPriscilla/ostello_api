@@ -8,15 +8,17 @@ const Room = {
     /**
      * Create a new room in a hostel.
      */
-    create: ({ hostel_id, room_type, price_per_month, capacity, is_available }) => {
+    create: ({ hostel_id, room_number, room_type, price_per_semester, capacity, description, is_available }) => {
         const sql = `INSERT INTO rooms
-      (hostel_id, room_type, price_per_month, capacity, is_available)
-      VALUES (?, ?, ?, ?, ?)`;
+      (hostel_id, room_number, room_type, price_per_semester, capacity, description, is_available)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`;
         return db.query(sql, [
             hostel_id,
-            room_type || 'Single',
-            price_per_month,
+            room_number || null,
+            room_type || 'SINGLE',
+            price_per_semester,
             capacity || 1,
+            description || null,
             is_available !== undefined ? is_available : true,
         ]);
     },
@@ -25,7 +27,7 @@ const Room = {
      * Get all rooms for a hostel.
      */
     getByHostel: (hostel_id) => {
-        const sql = 'SELECT * FROM rooms WHERE hostel_id = ? ORDER BY room_type, price_per_month';
+        const sql = 'SELECT * FROM rooms WHERE hostel_id = ? ORDER BY room_type, price_per_semester';
         return db.query(sql, [hostel_id]);
     },
 
@@ -43,11 +45,11 @@ const Room = {
     /**
      * Update a room.
      */
-    update: (id, { room_type, price_per_month, capacity, is_available }) => {
+    update: (id, { room_number, room_type, price_per_semester, capacity, description, is_available }) => {
         const sql = `UPDATE rooms SET
-      room_type = ?, price_per_month = ?, capacity = ?, is_available = ?
+      room_number = ?, room_type = ?, price_per_semester = ?, capacity = ?, description = ?, is_available = ?
       WHERE id = ?`;
-        return db.query(sql, [room_type, price_per_month, capacity, is_available, id]);
+        return db.query(sql, [room_number, room_type, price_per_semester, capacity, description, is_available, id]);
     },
 
     /**
