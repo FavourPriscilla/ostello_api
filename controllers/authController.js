@@ -1,12 +1,5 @@
 /**
  * controllers/authController.js – Authentication Controller (Ostello)
- *
- * Endpoints:
- *   POST /api/register         – Register with role selection
- *   POST /api/login            – Authenticate and receive JWT
- *   GET  /api/verify-email     – Verify email with token
- *   POST /api/forgot-password  – Request password reset link
- *   POST /api/reset-password   – Reset password with token
  */
 
 const User = require('../models/userModel');
@@ -20,11 +13,12 @@ dotenv.config();
 
 /**
  * POST /api/register
- * Body: { full_name, email, phone, password, role, institution }
+ * Registers a new user with email verification
  */
 const register = async (req, res) => {
     const { full_name, email, phone, password, role, institution } = req.body;
 
+    // Validate required fields
     if (!full_name || !email || !password) {
         return res.status(400).json({ error: 'full_name, email, and password are required.' });
     }
@@ -37,20 +31,26 @@ const register = async (req, res) => {
     }
 
     try {
+        // Hash the password before storing
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Generate verification token
         const verification_token = uuidv4();
 
+        // Create user in database
         await User.create({
             full_name,
             email,
             phone,
-            password,
+            password: hashedPassword, // Pass hashed password
             role: userRole,
             institution,
             verification_token,
         });
 
-        // Send verification email (non-blocking)
-        sendVerificationEmail(email, verification_token);
+        // Send verification email
+        await sendVerificationEmail(email, verification_token);
 
         res.status(201).json({
             message: 'Registration successful! Please check your email to verify your account.',
@@ -65,17 +65,18 @@ const register = async (req, res) => {
 
 /**
  * POST /api/login
- * Body: { email, password }
- * Response: { token, user: { id, full_name, email, role } }
+ * Authenticates a user and returns a JWT token
  */
 const login = async (req, res) => {
     const { email, password } = req.body;
 
+    // Validate required fields
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required.' });
     }
 
     try {
+        // Find user by email
         const [results] = await User.findByEmail(email);
         if (results.length === 0) {
             return res.status(401).json({ error: 'Invalid credentials.' });
@@ -88,11 +89,13 @@ const login = async (req, res) => {
             return res.status(403).json({ error: 'Please verify your email before logging in.' });
         }
 
+        // Verify password
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
+        // Generate JWT token
         const token = jwt.sign(
             { id: user.id, email: user.email, full_name: user.full_name, role: user.role },
             process.env.JWT_SECRET,
@@ -116,7 +119,8 @@ const login = async (req, res) => {
 };
 
 /**
- * GET /api/verify-email?token=xxx
+ * GET /api/verify-email
+ * Verifies a user's email using the verification token
  */
 const verifyEmail = async (req, res) => {
     const { token } = req.query;
@@ -126,12 +130,15 @@ const verifyEmail = async (req, res) => {
     }
 
     try {
+        // Find user by verification token
         const [results] = await User.findByVerificationToken(token);
         if (results.length === 0) {
             return res.status(400).json({ error: 'Invalid or expired verification token.' });
         }
 
+        // Mark user as verified
         await User.verify(results[0].id);
+
         res.json({ message: 'Email verified successfully! You can now log in.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -140,7 +147,7 @@ const verifyEmail = async (req, res) => {
 
 /**
  * POST /api/forgot-password
- * Body: { email }
+ * Initiates password reset by sending a reset email
  */
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
@@ -150,19 +157,27 @@ const forgotPassword = async (req, res) => {
     }
 
     try {
+        // Find user by email
         const [results] = await User.findByEmail(email);
+
+        // Security: Always return the same message to prevent email enumeration
         if (results.length === 0) {
-            // Don't reveal if email exists
-            return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+            return res.json({ message: 'If an account exists, a reset link has been sent.' });
         }
 
+        const user = results[0];
+
+        // Generate reset token (expires in 1 hour)
         const reset_token = uuidv4();
-        const expires = new Date(Date.now() + 3600000); // 1 hour
+        const expires = new Date(Date.now() + 3600000);
 
-        await User.setResetToken(results[0].id, reset_token, expires);
-        sendPasswordResetEmail(email, reset_token);
+        // Save reset token to database
+        await User.setResetToken(user.id, reset_token, expires);
 
-        res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+        // Send reset email
+        await sendPasswordResetEmail(email, reset_token);
+
+        res.json({ message: 'If an account exists, a reset link has been sent.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -170,25 +185,41 @@ const forgotPassword = async (req, res) => {
 
 /**
  * POST /api/reset-password
- * Body: { token, password }
+ * Resets a user's password using the reset token
  */
 const resetPassword = async (req, res) => {
-    const { token, password } = req.body;
+    // We added 'email' to what we extract from the request
+    const { email, password } = req.body;
 
-    if (!token || !password) {
-        return res.status(400).json({ error: 'Token and new password are required.' });
+    // If there is no email or password, tell the user exactly that
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Missing email or password in request.' });
     }
 
     try {
-        const [results] = await User.findByResetToken(token);
+        // 1. Find the user by email instead of token
+        const [results] = await User.findByEmail(email);
+
         if (results.length === 0) {
-            return res.status(400).json({ error: 'Invalid or expired reset token.' });
+            return res.status(404).json({ error: 'No account found with this email.' });
         }
 
-        await User.updatePassword(results[0].id, password);
-        res.json({ message: 'Password reset successful! You can now log in with your new password.' });
+        const user = results[0];
+
+        // 2. Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const hashed_password = await bcrypt.hash(password, salt);
+
+        // 3. Update the password in the database
+        await User.updatePassword(user.id, hashed_password);
+
+        // 4. THE MAGIC LINE: Mark them as verified immediately
+        await User.verify(user.id);
+
+        return res.json({ message: 'Success! Your account is now verified.' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Database Error:", err);
+        return res.status(500).json({ error: 'Server database error' });
     }
 };
 

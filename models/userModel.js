@@ -1,104 +1,112 @@
 /**
- * models/userModel.js - Data Access Layer for Users (Ostello)
- *
- * Roles: STUDENT, CUSTODIAN, ADMIN
- * Fields: full_name, email, phone, password_hash, role, institution,
- *         is_verified, verification_token, reset_token, reset_token_expires
+ * models/userModel.js – User Model (Ostello)
  */
-const db   = require('../config/db');
-const bcrypt = require('bcryptjs');
+const db = require('../config/db');
 
-const User = {
-  /** Create a new user. Password is hashed before storage. */
-  create: async ({ full_name, email, phone, password, role, institution, verification_token }) => {
-    const password_hash = await bcrypt.hash(password, 10);
+class User {
+  // --- 1. REGISTRATION & LOGIN METHODS ---
+
+  /**
+   * Create a new user in the database
+   * @param {Object} userData - User data object
+   * @param {string} userData.full_name - User's full name
+   * @param {string} userData.email - User's email
+   * @param {string} userData.phone - User's phone number
+   * @param {string} userData.password - Hashed password
+   * @param {string} userData.role - User role (STUDENT/CUSTODIAN)
+   * @param {string} userData.institution - User's institution
+   * @param {string} userData.verification_token - Email verification token
+   */
+  static async create(userData) {
+    const { full_name, email, phone, password, role, institution, verification_token } = userData;
     const sql = `
-      INSERT INTO users
-        (full_name, email, phone, password_hash, role, institution, is_verified, verification_token)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-    return db.query(sql, [
-      full_name,
-      email,
-      phone || null,
-      password_hash,
-      role || 'STUDENT',
-      institution || null,
-      false,
-      verification_token || null,
-    ]);
-  },
+      INSERT INTO users (full_name, email, phone, password_hash, role, institution, verification_token)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    return db.execute(sql, [full_name, email, phone, password, role, institution, verification_token]);
+  }
 
-  /** Find user by email (used during login). */
-  findByEmail: (email) =>
-    db.query('SELECT * FROM users WHERE email = ?', [email]),
+  /**
+   * Find a user by email address
+   * @param {string} email - User's email
+   * @returns {Promise<Array>} Database query result
+   */
+  static async findByEmail(email) {
+    const sql = 'SELECT * FROM users WHERE email = ?';
+    return db.execute(sql, [email]);
+  }
 
-  /** Find user by id (excludes password_hash for safe public use). */
-  findById: (id) =>
-    db.query(
-      'SELECT id, full_name, email, phone, role, institution, is_verified, created_at FROM users WHERE id = ?',
-      [id]
-    ),
+  // --- 2. EMAIL VERIFICATION METHODS ---
 
-  /** Find user by id including password_hash (internal use). */
-  findByIdFull: (id) =>
-    db.query('SELECT * FROM users WHERE id = ?', [id]),
+  /**
+   * Find a user by verification token
+   * @param {string} token - Email verification token
+   * @returns {Promise<Array>} Database query result
+   */
+  static async findByVerificationToken(token) {
+    const sql = 'SELECT * FROM users WHERE verification_token = ?';
+    return db.execute(sql, [token]);
+  }
 
-  /** Find user by email-verification token. */
-  findByVerificationToken: (token) =>
-    db.query('SELECT * FROM users WHERE verification_token = ?', [token]),
+  /**
+   * Mark a user as verified and remove verification token
+   * @param {number} userId - User's ID
+   * @returns {Promise<Array>} Database update result
+   */
+  static async verify(userId) {
+    const sql = 'UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?';
+    return db.execute(sql, [userId]);
+  }
 
-  /** Mark user as verified and clear the token. */
-  verify: (id) =>
-    db.query(
-      'UPDATE users SET is_verified = true, verification_token = NULL WHERE id = ?',
-      [id]
-    ),
+  // --- 3. PASSWORD RESET METHODS ---
 
-  /** Store a password-reset token with expiry. */
-  setResetToken: (id, reset_token, expires) =>
-    db.query(
-      'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
-      [reset_token, expires, id]
-    ),
+  /**
+   * Save reset token and expiry time to database
+   * @param {number} userId - User's ID
+   * @param {string} token - Reset token
+   * @param {Date} expires - Token expiry date
+   * @returns {Promise<Array>} Database update result
+   */
+  static async setResetToken(userId, token, expires) {
+    const sql = `
+      UPDATE users
+      SET reset_password_token = ?,
+          reset_password_expires = ?
+      WHERE id = ?
+    `;
+    return db.execute(sql, [token, expires, userId]);
+  }
 
-  /** Find user by valid (non-expired) reset token. */
-  findByResetToken: (token) =>
-    db.query(
-      'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
-      [token]
-    ),
+  /**
+   * Find user by reset token (only if not expired)
+   * @param {string} token - Reset token
+   * @returns {Promise<Array>} Database query result
+   */
+  static async findByResetToken(token) {
+    const sql = `
+      SELECT * FROM users
+      WHERE reset_password_token = ?
+      AND reset_password_expires > NOW()
+    `;
+    return db.execute(sql, [token]);
+  }
 
-  /** Update password and clear reset token. */
-  updatePassword: async (id, newPassword) => {
-    const password_hash = await bcrypt.hash(newPassword, 10);
-    return db.query(
-      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
-      [password_hash, id]
-    );
-  },
-
-  /** Return all users, optionally filtered by role. */
-  getAll: (role = null) => {
-    let sql = 'SELECT id, full_name, email, phone, role, institution, is_verified, created_at FROM users';
-    const params = [];
-    if (role) {
-      sql += ' WHERE role = ?';
-      params.push(role);
-    }
-    sql += ' ORDER BY created_at DESC';
-    return db.query(sql, params);
-  },
-
-  /** Update user profile fields. */
-  update: (id, { full_name, email, phone, institution }) =>
-    db.query(
-      'UPDATE users SET full_name = ?, email = ?, phone = ?, institution = ? WHERE id = ?',
-      [full_name, email, phone, institution, id]
-    ),
-
-  /** Permanently delete a user. */
-  delete: (id) =>
-    db.query('DELETE FROM users WHERE id = ?', [id]),
-};
+  /**
+   * Update user password and clear reset token
+   * @param {number} userId - User's ID
+   * @param {string} hashedPassword - New hashed password
+   * @returns {Promise<Array>} Database update result
+   */
+  static async updatePassword(userId, hashedPassword) {
+    const sql = `
+      UPDATE users
+      SET password_hash = ?,
+          reset_password_token = NULL,
+          reset_password_expires = NULL
+      WHERE id = ?
+    `;
+    return db.execute(sql, [hashedPassword, userId]);
+  }
+}
 
 module.exports = User;

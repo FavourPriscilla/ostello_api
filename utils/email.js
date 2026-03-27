@@ -23,8 +23,9 @@ const transporter = nodemailer.createTransport({
 /**
  * Send an email.
  * @param {string} to – recipient email
- * @param {string} subject
- * @param {string} html – HTML content
+ * @param {string} subject – email subject line
+ * @param {string} html – HTML content body
+ * @returns {Promise<void>}
  */
 const sendEmail = async (to, subject, html) => {
     try {
@@ -34,15 +35,18 @@ const sendEmail = async (to, subject, html) => {
             subject,
             html,
         });
-        console.log(`Email sent to ${to}: ${subject}`);
+        console.log(`✓ Email sent to ${to}: ${subject}`);
     } catch (err) {
-        console.error('Email send error:', err.message);
+        console.error('✗ Email send error:', err.message);
         // Don't throw — email failure shouldn't break the request flow
     }
 };
 
 /**
  * Send a verification email with a link.
+ * @param {string} email – recipient email
+ * @param {string} token – email verification token
+ * @returns {Promise<void>}
  */
 const sendVerificationEmail = (email, token) => {
     const url = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -61,14 +65,24 @@ const sendVerificationEmail = (email, token) => {
 
 /**
  * Send a password reset email with a link.
+ * Includes debugging console output for the reset token.
+ * @param {string} email – recipient email
+ * @param {string} token – password reset token
+ * @returns {Promise<void>}
  */
-const sendPasswordResetEmail = (email, token) => {
-    const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+const sendPasswordResetEmail = async (email, token) => {
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    
+    // Debug output: log reset link (useful for development/testing)
+    console.log('-----------------------------------------');
+    console.log('PASSWORD RESET LINK:', resetLink);
+    console.log('-----------------------------------------');
+
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
       <h2 style="color: #1A6B4B;">Password Reset 🔐</h2>
       <p>You requested a password reset for your Ostello account. Click the button below to set a new password.</p>
-      <a href="${url}" style="display: inline-block; background: #1A6B4B; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 16px 0;">
+      <a href="${resetLink}" style="display: inline-block; background: #1A6B4B; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 16px 0;">
         Reset Password
       </a>
       <p style="color: #777; font-size: 13px;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
@@ -76,5 +90,4 @@ const sendPasswordResetEmail = (email, token) => {
   `;
     return sendEmail(email, 'Reset Your Ostello Password', html);
 };
-
 module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail };
