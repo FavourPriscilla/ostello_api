@@ -22,7 +22,15 @@ const Hostel = require('../models/hostelModel');
 const searchHostels = async (req, res) => {
     try {
         const [hostels] = await Hostel.search(req.query);
-        res.json(hostels);
+        
+        // Parse JSON fields for each hostel
+        const parsedHostels = hostels.map(hostel => ({
+            ...hostel,
+            photos: typeof hostel.photos === 'string' ? JSON.parse(hostel.photos) : hostel.photos,
+            amenities: typeof hostel.amenities === 'string' ? JSON.parse(hostel.amenities) : hostel.amenities,
+        }));
+        
+        res.json(parsedHostels);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -34,7 +42,15 @@ const searchHostels = async (req, res) => {
 const getMyHostels = async (req, res) => {
     try {
         const [hostels] = await Hostel.getByCustodian(req.user.id);
-        res.json(hostels);
+        
+        // Parse JSON fields for each hostel
+        const parsedHostels = hostels.map(hostel => ({
+            ...hostel,
+            photos: typeof hostel.photos === 'string' ? JSON.parse(hostel.photos) : hostel.photos,
+            amenities: typeof hostel.amenities === 'string' ? JSON.parse(hostel.amenities) : hostel.amenities,
+        }));
+        
+        res.json(parsedHostels);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

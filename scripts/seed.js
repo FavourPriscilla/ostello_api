@@ -171,7 +171,7 @@ async function seed() {
       address: 'Wandegeya, Kampala',
       latitude: 0.3380,
       longitude: 32.5697,
-      photos: JSON.stringify(['https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800']),
+      photos: JSON.stringify(['https://www.telegraph.co.uk/content/dam/travel/2022/07/20/TELEMMGLPICT000302734735_trans_NvBQzQNjv4BqqhiqTSb3ShHioHoGmPvu_x4193v88eRm5YDSONrmJwE.jpeg?imwidth=640']),
       amenities: JSON.stringify(['WiFi', 'Security', 'Study Room', 'Parking', 'Laundry']),
     },
     {
@@ -181,7 +181,7 @@ async function seed() {
       address: 'Kikoni, Kampala',
       latitude: 0.3355,
       longitude: 32.5630,
-      photos: JSON.stringify(['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800']),
+      photos: JSON.stringify(['https://i.guim.co.uk/img/media/098bda6ba05470958c0915b3f22c2e1f49e5dde2/37_0_767_460/master/767.jpg?width=445&dpr=1&s=none&crop=none']),
       amenities: JSON.stringify(['WiFi', 'Security', 'Kitchen', 'Water Tank']),
     },
     {
@@ -191,7 +191,7 @@ async function seed() {
       address: 'Mukono Town',
       latitude: 0.3536,
       longitude: 32.7551,
-      photos: JSON.stringify(['https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800']),
+      photos: JSON.stringify(['https://media.stylist.co.uk/app/uploads/2018/05/23141713/rodamon-riad-marrakech.jpg']),
       amenities: JSON.stringify(['WiFi', 'Security', 'Gym', 'Kitchen', 'TV Room', 'En-suite']),
     },
     {
@@ -201,7 +201,7 @@ async function seed() {
       address: 'Bishop Tucker Rd, Mukono',
       latitude: 0.3530,
       longitude: 32.7590,
-      photos: JSON.stringify(['https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800']),
+      photos: JSON.stringify(['https://hips.hearstapps.com/hmg-prod/images/best-hostels-2-1548160032.jpg']),
       amenities: JSON.stringify(['WiFi', 'Security', 'Study Room', 'Canteen']),
     },
   ];

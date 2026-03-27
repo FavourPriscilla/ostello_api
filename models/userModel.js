@@ -137,6 +137,60 @@ class User {
     const sql = 'DELETE FROM users WHERE id = ?';
     return db.execute(sql, [userId]);
   }
+
+  // --- 4. USER MANAGEMENT METHODS ---
+
+  /**
+   * Get all users, optionally filtered by role
+   * @param {string|null} role - Role filter (STUDENT/CUSTODIAN/ADMIN or null for all)
+   * @returns {Promise<Array>} Database query result
+   */
+  static async getAll(role = null) {
+    let sql = 'SELECT id, full_name, email, phone, role, institution, is_verified, created_at FROM users';
+    const params = [];
+    if (role) {
+      sql += ' WHERE role = ?';
+      params.push(role);
+    }
+    sql += ' ORDER BY created_at DESC';
+    return db.execute(sql, params);
+  }
+
+  /**
+   * Find a user by ID
+   * @param {number} id - User's ID
+   * @returns {Promise<Array>} Database query result
+   */
+  static async findById(id) {
+    const sql = 'SELECT id, full_name, email, phone, role, institution, is_verified, created_at FROM users WHERE id = ?';
+    return db.execute(sql, [id]);
+  }
+
+  /**
+   * Update user details
+   * @param {number} id - User's ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Array>} Database update result
+   */
+  static async update(id, updates) {
+    const { full_name, email, phone, institution } = updates;
+    const sql = `
+      UPDATE users
+      SET full_name = ?, email = ?, phone = ?, institution = ?
+      WHERE id = ?
+    `;
+    return db.execute(sql, [full_name, email, phone, institution, id]);
+  }
+
+  /**
+   * Delete a user
+   * @param {number} id - User's ID
+   * @returns {Promise<Array>} Database delete result
+   */
+  static async delete(id) {
+    const sql = 'DELETE FROM users WHERE id = ?';
+    return db.execute(sql, [id]);
+  }
 }
 
 module.exports = User;
