@@ -21,3 +21,15 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
 module.exports = router;
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const userData = {
+    fullName,
+    email,
+    password,
+    phone_number: phone // <--- Add this line to the object
+  };
+
+  // Your fetch or axios call follows...
+};
