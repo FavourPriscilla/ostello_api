@@ -13,7 +13,7 @@ dotenv.config();
 
 /**
  * POST /api/register
- * Registers a new user with email verification
+ * Registers a new user with auto-verification
  */
 const register = async (req, res) => {
     const { full_name, email, phone, password, role, institution } = req.body;
@@ -35,10 +35,7 @@ const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generate verification token
-        const verification_token = uuidv4();
-
-        // Create user in database
+        // Create user in database with auto-verification
         await User.create({
             full_name,
             email,
@@ -46,14 +43,11 @@ const register = async (req, res) => {
             password: hashedPassword, // Pass hashed password
             role: userRole,
             institution,
-            verification_token,
+            is_verified: true,
         });
 
-        // Send verification email
-        await sendVerificationEmail(email, verification_token);
-
         res.status(201).json({
-            message: 'Registration successful! Please check your email to verify your account.',
+            message: 'Registration successful! You can now log in.',
         });
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {

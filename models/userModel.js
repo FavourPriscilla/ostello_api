@@ -15,15 +15,15 @@ class User {
    * @param {string} userData.password - Hashed password
    * @param {string} userData.role - User role (STUDENT/CUSTODIAN)
    * @param {string} userData.institution - User's institution
-   * @param {string} userData.verification_token - Email verification token
+   * @param {boolean} userData.is_verified - Whether the user is verified
    */
   static async create(userData) {
-    const { full_name, email, phone, password, role, institution, verification_token } = userData;
+    const { full_name, email, phone, password, role, institution, is_verified } = userData;
     const sql = `
-      INSERT INTO users (full_name, email, phone, password_hash, role, institution, verification_token)
+      INSERT INTO users (full_name, email, phone, password_hash, role, institution, is_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    return db.execute(sql, [full_name, email, phone, password, role, institution, verification_token]);
+    return db.execute(sql, [full_name, email, phone, password, role, institution, is_verified]);
   }
 
   /**
@@ -92,20 +92,50 @@ class User {
   }
 
   /**
-   * Update user password and clear reset token
+   * Find a user by ID
+   * @param {number} id - User's ID
+   * @returns {Promise<Array>} Database query result
+   */
+  static async findById(id) {
+    const sql = 'SELECT * FROM users WHERE id = ?';
+    return db.execute(sql, [id]);
+  }
+
+  /**
+   * Get all users, optionally filtered by role
+   * @param {string|null} role - Role to filter by (STUDENT/CUSTODIAN/ADMIN)
+   * @returns {Promise<Array>} Database query result
+   */
+  static async getAll(role = null) {
+    let sql = 'SELECT id, full_name, email, phone, role, institution, is_verified, created_at FROM users';
+    const params = [];
+    if (role) {
+      sql += ' WHERE role = ?';
+      params.push(role);
+    }
+    return db.execute(sql, params);
+  }
+
+  /**
+   * Update user details
    * @param {number} userId - User's ID
-   * @param {string} hashedPassword - New hashed password
+   * @param {Object} userData - User data to update
    * @returns {Promise<Array>} Database update result
    */
-  static async updatePassword(userId, hashedPassword) {
-    const sql = `
-      UPDATE users
-      SET password_hash = ?,
-          reset_password_token = NULL,
-          reset_password_expires = NULL
-      WHERE id = ?
-    `;
-    return db.execute(sql, [hashedPassword, userId]);
+  static async update(userId, userData) {
+    const { full_name, email, phone, institution } = userData;
+    const sql = 'UPDATE users SET full_name = ?, email = ?, phone = ?, institution = ? WHERE id = ?';
+    return db.execute(sql, [full_name, email, phone, institution, userId]);
+  }
+
+  /**
+   * Delete a user
+   * @param {number} userId - User's ID
+   * @returns {Promise<Array>} Database delete result
+   */
+  static async delete(userId) {
+    const sql = 'DELETE FROM users WHERE id = ?';
+    return db.execute(sql, [userId]);
   }
 }
 
